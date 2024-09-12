@@ -11,7 +11,8 @@ def load_net(fname, net):
         for k, v in net.state_dict().items():        
             param = torch.from_numpy(np.asarray(h5f[k]))         
             v.copy_(param)
-            
+
+# saved model checkpoint           
 def save_checkpoint(state, is_best,task_id, filename='checkpoint.pth.tar'):
     torch.save(state, task_id+filename)
     if is_best:

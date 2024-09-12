@@ -38,6 +38,7 @@ parser.add_argument('task',metavar='TASK', type=str,
 
 # torch.backends.cudnn.benchmark = True
 
+# randomly draw part of sample due to GPU memory limit
 def get_random_sample(input_list, nsample=10):
     temp = []
     nlength = len(input_list)
@@ -75,6 +76,8 @@ def main():
     nsample = 40
     train_list_original = train_list
     train_list = train_list_original[:10]
+
+    # randomly draw part of the sample to training
     train_list = get_random_sample(train_list_original,nsample)
 
     # print(val_list)
@@ -84,17 +87,20 @@ def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     torch.cuda.manual_seed(args.seed)
     
+    # create model
     model = CSRNet()
-    
+    # send model to GPU
     model = model.cuda()
-    
+    # send criterion to GPU
     criterion = nn.MSELoss(size_average=False).cuda()
     # criterion = nn.MSELoss(size_average=False)
     
+    # set optimizer
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.decay)
 
+    # restart if checkpoint file is fed
     if args.pre:
         if os.path.isfile(args.pre):
             print("=> loading checkpoint '{}'".format(args.pre))
@@ -107,13 +113,17 @@ def main():
                   .format(args.pre, checkpoint['epoch']))
         else:
             print("=> no checkpoint found at '{}'".format(args.pre))
-            
+
+    # start training       
     for epoch in range(args.start_epoch, args.epochs):
         
         adjust_learning_rate(optimizer, epoch)
         
+        # re-select training sample for each epoch, due to memory limit on GPU
         train_list = get_random_sample(train_list_original,nsample)
+        # train
         train(train_list, model, criterion, optimizer, epoch)
+        # validation
         prec1 = validate(val_list, model, criterion)
         
         is_best = prec1 < best_prec1
@@ -134,7 +144,7 @@ def train(train_list, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     
-    
+    # load training img to data loader
     train_loader = torch.utils.data.DataLoader(
         dataset.listDataset(train_list,
                        shuffle=True,
@@ -149,30 +159,33 @@ def train(train_list, model, criterion, optimizer, epoch):
         batch_size=args.batch_size)
     print('epoch %d, processed %d samples, lr %.10f' % (epoch, epoch * len(train_loader.dataset), args.lr))
     
+    # set model to train
     model.train()
     end = time.time()
     
+    # iterate through data loader
     for i,(img, target)in enumerate(train_loader):
         data_time.update(time.time() - end)
         
+        # send img to GPU
         img = img.cuda()
-
         img = Variable(img)
+        # prediction
         output = model(img)
-        
-        
-        
-        
+
+        # ground truth to GPU
         target = target.type(torch.FloatTensor).unsqueeze(0).cuda()
         # target = target.type(torch.FloatTensor).unsqueeze(0)
         target = Variable(target)
         
-        
+        # calculate loss
         loss = criterion(output, target)
         
         losses.update(loss.item(), img.size(0))
         optimizer.zero_grad()
+        # backward propagation
         loss.backward()
+        # one step forward for weights and biases
         optimizer.step()    
         
         batch_time.update(time.time() - end)

@@ -33,6 +33,8 @@ class CSRNet(nn.Module):
 
             # for i in range(len(self.frontend.state_dict().items())):
             #     self.frontend.state_dict().items()[i][1].data[:] = mod.state_dict().items()[i][1].data[:]
+
+            # copy weigths to model
             for item_self, item_mod in zip(self.frontend.state_dict().items(), mod.state_dict().items()):
                 item_self[1].data[:] = item_mod[1].data[:]
     def forward(self,x):
@@ -49,8 +51,8 @@ class CSRNet(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-            
-                
+
+# create layers of CNN based on input           
 def make_layers(cfg, in_channels = 3,batch_norm=False,dilation = False):
     if dilation:
         d_rate = 2

@@ -9,8 +9,11 @@ import torchvision.transforms.functional as F
 
 class listDataset(Dataset):
     def __init__(self, root, shape=None, shuffle=True, transform=None,  train=False, seen=0, batch_size=1, num_workers=4, prediction=False):
+        # increase size for training
         if train:
             root = root *4
+
+        # shuffle dataset
         if shuffle:
             random.shuffle(root)
         
@@ -33,20 +36,18 @@ class listDataset(Dataset):
         img_path = self.lines[index]
         
         if self.prediction:
+            # if prediction, then no ground truth provided
             img = load_data_prediction(img_path)
         else:
+            # if training, get img with ground truth
             img,target = load_data(img_path,self.train)
-        
-        #img = 255.0 * F.to_tensor(img)
-        
-        #img[0,:,:]=img[0,:,:]-92.8207477031
-        #img[1,:,:]=img[1,:,:]-95.2757037428
-        #img[2,:,:]=img[2,:,:]-104.877445883
 
         if self.transform is not None:
             img = self.transform(img)
         
         if self.prediction:
+            # if prediction, also return img file path
             return img, img_path
         else:
+            # return img and ground truth
             return img,target
